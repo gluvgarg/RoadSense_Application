@@ -5,15 +5,14 @@ import { PlaceholderPage } from '../components/common/PlaceholderPage';
 export function NavigationPage() {
   return (
     <PlaceholderPage
-      title="Driver Navigation & Road Hazard Avoidance"
-      subtitle="Driver-facing in-cab navigation experience delivering real-time pothole alerts, dynamic detour routing around damaged segments, and ride smoothness optimization."
+      title="Navigation"
+      subtitle="Road-quality-aware navigation for drivers and fleet operators."
       icon={Navigation}
       moduleCode="MOD-05-NAVIGATION"
       plannedFeatures={[
-        'Turn-by-turn navigation with live road damage audio/visual heads-up warnings',
-        'Dynamic routing favoring high-integrity pavement corridors (high PCI)',
-        'Driver hazard reporting and instant crowdsourced validation',
-        'Vehicle suspension telemetry and bump shock dampening logs'
+        'Route planning with road damage hazard awareness',
+        'Visual alerts for known potholes and road defects along routes',
+        'Driver report submission for newly encountered road hazards'
       ]}
     />
   );

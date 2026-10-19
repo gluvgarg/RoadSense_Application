@@ -5,15 +5,14 @@ import { PlaceholderPage } from '../components/common/PlaceholderPage';
 export function RoadConditionsPage() {
   return (
     <PlaceholderPage
-      title="Road Conditions & Infrastructure Health"
-      subtitle="Comprehensive segment-by-segment Pavement Condition Index (PCI), historical surface wear curves, and GIS arterial degradation tracking."
+      title="Road Conditions"
+      subtitle="Overview of monitored road networks, reported damage locations, and condition assessments across active regions."
       icon={Route}
       moduleCode="MOD-02-CONDITIONS"
       plannedFeatures={[
-        'Full Pavement Condition Index (PCI 0-100) geospatial map layer',
-        'Longitudinal segment degradation timeline & predictive wear forecasting',
-        'Municipal road maintenance work order generation and export',
-        'Surface roughness (IRI - International Roughness Index) calculation tables'
+        'Interactive map view of reported road condition observations',
+        'Road segment filtering by location and assessed damage',
+        'Regional road health summaries'
       ]}
     />
   );

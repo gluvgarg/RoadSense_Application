@@ -6,14 +6,13 @@ export function DetectionManagementPage() {
   return (
     <PlaceholderPage
       title="Detections"
-      subtitle="Complete damage catalog, manual review, false positive filtering, and maintenance dispatch."
+      subtitle="Catalog of reported road damage detections with triage and review workflows."
       icon={ShieldAlert}
       moduleCode="MOD-04-DETECTIONS"
       plannedFeatures={[
-        'Full operational detection repository with advanced spatial and temporal filters',
-        'Multi-frame Edge AI optical bounding box review and vibration waveform validation',
-        'Severity reclassification, civil engineer approval, and contractor dispatch',
-        'Bulk CSV / GeoJSON export for municipal GIS and road authority integration'
+        'Comprehensive list of incoming road reports with search and filtering',
+        'Status tracking for reported damage (Needs Review, In Review, Verified)',
+        'Export report records for municipal review'
       ]}
     />
   );
