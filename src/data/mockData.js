@@ -10,10 +10,10 @@ export const PROTOTYPE_META = {
   coverageRegion: 'Delhi NCR',
   lastSampleUpdate: '10:00 IST',
   operator: {
-    name: 'Aarav Khanna',
+    name: 'ADMIN',
     role: 'Administrator',
-    initials: 'AK',
-    email: 'a.khanna@roadsense.internal'
+    initials: 'A',
+    email: 'admin@roadsense.internal'
   }
 };
 

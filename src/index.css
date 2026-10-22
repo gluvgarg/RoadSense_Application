@@ -40,3 +40,32 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #B8B4A6;
 }
+
+/* Restrained Mapbox Attribution Styling for RoadSense */
+.mapboxgl-ctrl-attrib {
+  background-color: rgba(246, 245, 238, 0.92) !important;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid #DCD9CD;
+  border-left: 1px solid #DCD9CD;
+  border-top-left-radius: 2px;
+  padding: 1px 6px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+  color: #717886 !important;
+}
+
+.mapboxgl-ctrl-attrib a {
+  color: #575F6E !important;
+  text-decoration: none;
+}
+
+.mapboxgl-ctrl-attrib a:hover {
+  color: #141E28 !important;
+  text-decoration: underline;
+}
+
+.mapboxgl-ctrl-attrib .mapboxgl-ctrl-attrib-inner {
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+}

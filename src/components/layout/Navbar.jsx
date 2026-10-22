@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronDown, Menu, X, User, Shield } from 'lucide-react';
 import { PROTOTYPE_META } from '../../data/mockData';

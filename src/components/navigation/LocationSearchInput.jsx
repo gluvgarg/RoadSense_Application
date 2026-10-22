@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MapPin, X, Loader2 } from 'lucide-react';
 
 export function LocationSearchInput({
@@ -29,6 +29,19 @@ export function LocationSearchInput({
   const inputRef = useRef(null);
   const abortControllerRef = useRef(null);
   const debounceTimerRef = useRef(null);
+  const lastRequestedQueryRef = useRef('');
+
+  // Clean up debounce timer and active geocoding request on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Click outside listener to dismiss dropdown
   useEffect(() => {
@@ -45,7 +58,8 @@ export function LocationSearchInput({
   // Fetch suggestions from Mapbox Geocoding API with India filter & Delhi NCR proximity bias
   const fetchSuggestions = useCallback(
     async (query) => {
-      if (!mapboxToken || !query.trim() || query.trim().length < 2) {
+      const trimmedQuery = query.trim();
+      if (!mapboxToken || !trimmedQuery || trimmedQuery.length < 2) {
         setSuggestions([]);
         setIsLoading(false);
         return;
@@ -55,21 +69,28 @@ export function LocationSearchInput({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      abortControllerRef.current = new AbortController();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      lastRequestedQueryRef.current = trimmedQuery;
 
       setIsLoading(true);
       setSearchError(null);
 
       try {
-        const encoded = encodeURIComponent(query.trim());
+        const encoded = encodeURIComponent(trimmedQuery);
         const endpoint = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${mapboxToken}&country=IN&proximity=77.2168,28.5350&limit=5&types=poi,address,neighborhood,locality,place`;
 
-        const res = await fetch(endpoint, { signal: abortControllerRef.current.signal });
+        const res = await fetch(endpoint, { signal: controller.signal });
         if (!res.ok) {
           throw new Error(`Geocoding HTTP error: ${res.status}`);
         }
 
         const data = await res.json();
+        // Prevent stale responses from reopening suggestions if query changed
+        if (lastRequestedQueryRef.current !== trimmedQuery || controller.signal.aborted) {
+          return;
+        }
+
         const features = data.features || [];
         setSuggestions(features);
         setIsOpen(true);
@@ -81,7 +102,9 @@ export function LocationSearchInput({
           setSuggestions([]);
         }
       } finally {
-        setIsLoading(false);
+        if (lastRequestedQueryRef.current === trimmedQuery) {
+          setIsLoading(false);
+        }
       }
     },
     [mapboxToken]
@@ -101,7 +124,12 @@ export function LocationSearchInput({
       clearTimeout(debounceTimerRef.current);
     }
 
-    if (!newText.trim() || newText.trim().length < 2) {
+    const trimmed = newText.trim();
+    if (!trimmed || trimmed.length < 2) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      lastRequestedQueryRef.current = '';
       setSuggestions([]);
       setIsOpen(false);
       setIsLoading(false);
@@ -114,6 +142,14 @@ export function LocationSearchInput({
   };
 
   const handleSelectSuggestion = (feature) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    lastRequestedQueryRef.current = '';
+
     const selectedItem = {
       name: feature.place_name,
       primaryName: feature.text,
@@ -128,16 +164,17 @@ export function LocationSearchInput({
   };
 
   const handleClear = () => {
-    setInputText('');
-    setSuggestions([]);
-    setIsOpen(false);
-    setActiveIndex(-1);
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    lastRequestedQueryRef.current = '';
+    setInputText('');
+    setSuggestions([]);
+    setIsOpen(false);
+    setActiveIndex(-1);
     onClear();
     inputRef.current?.focus();
   };

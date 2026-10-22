@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
   RotateCcw, 
@@ -13,11 +14,19 @@ import { ROAD_CONDITIONS_REPORTS } from '../data/mockData';
 import { DetectionDetailsModal } from '../components/detections/DetectionDetailsModal';
 
 export function DetectionManagementPage() {
+  const [searchParams] = useSearchParams();
+  const initialReportId = searchParams.get('reportId') || searchParams.get('search') || '';
+
   const [reports, setReports] = useState(ROAD_CONDITIONS_REPORTS);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialReportId);
   const [severityFilter, setSeverityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(() => {
+    const reportIdParam = searchParams.get('reportId');
+    return reportIdParam
+      ? ROAD_CONDITIONS_REPORTS.find((r) => r.id === reportIdParam) || null
+      : null;
+  });
   const [notification, setNotification] = useState(null);
   const notificationTimerRef = useRef(null);
 
@@ -195,13 +204,8 @@ export function DetectionManagementPage() {
       {/* 1. Editorial Page Header */}
       <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-1">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[11px] font-mono text-[#717886] uppercase tracking-wider">
-              04 / DETECTIONS
-            </span>
-            <span className="border border-[#DCD9CD] bg-[#F6F5EE] px-1.5 py-0.5 rounded-xs text-[10px] font-mono text-[#717886]">
-              DEMO DATA
-            </span>
+          <div className="text-[11px] font-mono text-[#717886] uppercase tracking-wider">
+            04 / DETECTIONS
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-bold text-[#141E28] tracking-tight leading-none">
@@ -217,7 +221,7 @@ export function DetectionManagementPage() {
         <div className="text-[11px] font-mono text-[#717886] sm:text-right shrink-0">
           <span>Showing </span>
           <strong className="text-[#141E28] font-bold">{filteredReports.length}</strong>
-          <span> of {reports.length} sample detections</span>
+          <span> of {reports.length} reports</span>
           <div className="text-[10px] text-[#717886] mt-0.5">
             {metrics.needsReview} pending review · {metrics.verified} verified
           </div>

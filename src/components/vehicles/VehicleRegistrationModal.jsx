@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Cpu, AlertCircle, ShieldCheck } from 'lucide-react';
 import { FLEET_OPERATORS, VEHICLE_TYPES } from '../../data/mockVehicles';
 

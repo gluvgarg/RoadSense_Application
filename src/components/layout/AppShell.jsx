@@ -1,7 +1,5 @@
-import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
-import { PROTOTYPE_META } from '../../data/mockData';
 
 export function AppShell() {
   return (
@@ -14,17 +12,10 @@ export function AppShell() {
         <Outlet />
       </main>
 
-      {/* 3. Subtle Editorial Footer Note */}
-      <footer className="border-t border-[#DCD9CD] py-4 text-xs text-[#717886]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-[#141E28]">RoadSense</span>
-            <span>·</span>
-            <span className="font-mono text-[11px] text-[#717886]">{PROTOTYPE_META.disclaimer}</span>
-          </div>
-          <div className="font-mono text-[11px] text-[#717886]">
-            {PROTOTYPE_META.coverageRegion} · Last update: {PROTOTYPE_META.lastSampleUpdate}
-          </div>
+      {/* 3. Minimal Editorial Footer */}
+      <footer className="border-t border-[#DCD9CD] py-3 text-[11px] font-mono text-[#717886]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <span>RoadSense · Prototype</span>
         </div>
       </footer>
     </div>

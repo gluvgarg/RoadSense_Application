@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, Filter, RotateCcw, X } from 'lucide-react';
 
 import { RoadConditionsMap } from '../components/road-conditions/RoadConditionsMap';
@@ -54,13 +54,8 @@ export function RoadConditionsPage() {
       {/* 1. Editorial Page Header */}
       <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-1">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[11px] font-mono text-[#717886] uppercase tracking-wider">
-              02 / ROAD CONDITIONS
-            </span>
-            <span className="border border-[#DCD9CD] bg-[#F6F5EE] px-1.5 py-0.5 rounded-xs text-[10px] font-mono text-[#717886]">
-              DEMO DATA
-            </span>
+          <div className="text-[11px] font-mono text-[#717886] uppercase tracking-wider">
+            02 / ROAD CONDITIONS
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-bold text-[#141E28] tracking-tight leading-none">
@@ -76,7 +71,7 @@ export function RoadConditionsPage() {
         <div className="text-[11px] font-mono text-[#717886] sm:text-right shrink-0">
           <span>Showing </span>
           <strong className="text-[#141E28] font-bold">{filteredReports.length}</strong>
-          <span> of {ROAD_CONDITIONS_REPORTS.length} demo locations</span>
+          <span> of {ROAD_CONDITIONS_REPORTS.length} reports</span>
         </div>
       </section>
 

@@ -1,12 +1,10 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
 import { 
   X, 
   MapPin, 
   RotateCcw, 
-  Key, 
-  AlertCircle, 
-  ArrowRight
+  Key
 } from 'lucide-react';
 import { DELHI_NCR_MAP_CENTER } from '../../data/mockData';
 import { calculateRouteBounds } from '../../utils/geoUtils';
@@ -57,13 +55,9 @@ export function NavigationMap({
 }) {
   const mapRef = useRef(null);
 
-  // In-session token support if env token is missing
-  const envToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-  const isEnvTokenValid = Boolean(envToken && envToken.trim() !== '' && envToken !== 'your_public_token_here');
-  const [sessionToken, setSessionToken] = useState('');
-  const [tokenInputError, setTokenInputError] = useState(null);
-
-  const activeToken = sessionToken.trim() || mapboxToken || (isEnvTokenValid ? envToken : '');
+  const rawToken = (mapboxToken || import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '').trim();
+  const hasValidToken = Boolean(rawToken && rawToken !== 'your_public_token_here');
+  const activeToken = hasValidToken ? rawToken : '';
 
   const [hoveredHazardId, setHoveredHazardId] = useState(null);
 
@@ -178,20 +172,9 @@ export function NavigationMap({
     });
   };
 
-  const handleApplySessionToken = (e) => {
-    e.preventDefault();
-    const trimmed = sessionToken.trim();
-    if (!trimmed.startsWith('pk.')) {
-      setTokenInputError('Mapbox public tokens typically start with "pk."');
-      return;
-    }
-    setTokenInputError(null);
-    setSessionToken(trimmed);
-  };
-
   return (
     <div className={`relative w-full border border-[#DCD9CD] bg-[#F6F5EE] overflow-hidden ${className}`}>
-      {activeToken ? (
+      {hasValidToken ? (
         <Map
           ref={mapRef}
           initialViewState={{
@@ -385,57 +368,37 @@ export function NavigationMap({
                   Mapbox Access Token Required
                 </h3>
                 <p className="text-xs text-[#575F6E] leading-relaxed">
-                  Route calculation and navigation tiles require a valid Mapbox public token.
+                  Route calculation and navigation tiles require a valid Mapbox public access token.
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleApplySessionToken} className="space-y-2 pt-2 border-t border-[#DCD9CD]">
-              <label htmlFor="nav-session-token" className="block text-[11px] font-medium text-[#141E28]">
-                Enter a public token for this session:
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  id="nav-session-token"
-                  type="text"
-                  value={sessionToken}
-                  onChange={(e) => {
-                    setSessionToken(e.target.value);
-                    setTokenInputError(null);
-                  }}
-                  placeholder="pk.eyJ1..."
-                  className="flex-1 px-3 py-1.5 bg-white border border-[#DCD9CD] rounded-xs font-mono text-xs text-[#141E28]"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-[#141E28] hover:bg-[#1E2E3E] text-white font-medium rounded-xs text-xs cursor-pointer flex items-center gap-1"
-                >
-                  <span>Apply</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+            <div className="pt-2 border-t border-[#DCD9CD] space-y-2">
+              <p className="text-[11px] text-[#575F6E] leading-relaxed">
+                Add your token to <code className="px-1 py-0.5 bg-[#EAE8DD] text-[#141E28] font-mono rounded-xs">.env</code> in the project directory:
+              </p>
+              <div className="p-2.5 bg-white border border-[#DCD9CD] rounded-xs font-mono text-[11px] text-[#141E28] break-all">
+                VITE_MAPBOX_ACCESS_TOKEN=pk.eyJ1...
               </div>
-              {tokenInputError && (
-                <div className="text-[11px] text-[#B93829] flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>{tokenInputError}</span>
-                </div>
-              )}
-            </form>
+              <p className="text-[10px] text-[#717886] font-mono">
+                Restart the Vite development server after updating environment variables.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {/* Floating Reset View Button (Top Left) */}
-      {activeToken && (
+      {hasValidToken && (
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <button
             type="button"
             onClick={handleResetView}
             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#F6F5EE]/95 backdrop-blur-xs border border-[#DCD9CD] text-xs font-medium text-[#141E28] hover:bg-[#EAE8DD] rounded-xs shadow-xs transition-colors cursor-pointer"
-            title="Fit view to route / Delhi NCR overview"
+            title="Fit view to route / reset map view"
           >
             <RotateCcw className="w-3.5 h-3.5 text-[#575F6E]" />
-            <span>{selectedRoute ? 'Fit Route' : 'Center Delhi NCR'}</span>
+            <span>{selectedRoute ? 'Fit route' : 'Reset map view'}</span>
           </button>
         </div>
       )}

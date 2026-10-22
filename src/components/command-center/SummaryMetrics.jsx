@@ -1,4 +1,3 @@
-import React from 'react';
 import { SUMMARY_METRICS } from '../../data/mockData';
 
 export function SummaryMetrics() {

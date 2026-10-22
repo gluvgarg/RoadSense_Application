@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Map, { Marker, NavigationControl } from 'react-map-gl/mapbox';
 import { 
   X, 
@@ -328,10 +328,10 @@ export function RoadConditionsMap({
             type="button"
             onClick={handleResetView}
             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#F6F5EE]/95 backdrop-blur-xs border border-[#DCD9CD] text-xs font-medium text-[#141E28] hover:bg-[#EAE8DD] rounded-xs shadow-xs transition-colors focus:outline-none focus:ring-1 focus:ring-[#141E28] cursor-pointer"
-            title="Reset to Delhi NCR overview"
+            title="Reset map view"
           >
             <RotateCcw className="w-3.5 h-3.5 text-[#575F6E]" />
-            <span>Center Delhi NCR</span>
+            <span>Reset map view</span>
           </button>
         </div>
       )}

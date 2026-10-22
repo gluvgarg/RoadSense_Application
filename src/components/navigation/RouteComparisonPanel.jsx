@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -14,6 +14,7 @@ export function RouteComparisonPanel({
   routes = [],
   selectedRouteIndex = 0,
   recommendedRouteIndex = 0,
+  fastestRouteIndex,
   recommendationReason = '',
   onSelectRoute
 }) {
@@ -22,6 +23,15 @@ export function RouteComparisonPanel({
   if (!routes || routes.length === 0) {
     return null;
   }
+
+  // Calculate fastest route by comparing actual Mapbox route durations
+  const computedFastestIndex =
+    typeof fastestRouteIndex === 'number'
+      ? fastestRouteIndex
+      : routes.reduce(
+          (bestIdx, r, i, arr) => (r.duration < arr[bestIdx].duration ? i : bestIdx),
+          0
+        );
 
   const selectedRoute = routes[selectedRouteIndex] || routes[0];
   const steps = selectedRoute?.legs?.[0]?.steps || [];
@@ -37,6 +47,7 @@ export function RouteComparisonPanel({
         {routes.map((route, idx) => {
           const isSelected = idx === selectedRouteIndex;
           const isRecommended = idx === recommendedRouteIndex;
+          const isFastest = idx === computedFastestIndex;
           const hazardData = route.hazardAnalysis || {
             nearbyReports: [],
             criticalCount: 0,
@@ -64,19 +75,24 @@ export function RouteComparisonPanel({
                   : 'border-[#DCD9CD] bg-[#F6F5EE] hover:bg-[#EAE8DD]/60'
               }`}
             >
-              {/* Card Header: Route Name & Badges */}
+              {/* Card Header: Route Name & Independent Badges (Selected, Recommended, Fastest) */}
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-bold text-xs text-[#141E28]">
                     Route {idx + 1}
                   </span>
+                  {isSelected && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-mono font-semibold bg-[#141E28] text-white">
+                      Selected
+                    </span>
+                  )}
                   {isRecommended && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[10px] font-semibold bg-[#10B981]/15 text-[#047857] border border-[#10B981]/30">
                       <CheckCircle2 className="w-3 h-3" />
                       <span>Recommended</span>
                     </span>
                   )}
-                  {!isRecommended && idx === 0 && (
+                  {isFastest && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-xs text-[10px] font-mono text-[#575F6E] bg-[#EAE8DD] border border-[#DCD9CD]">
                       Fastest
                     </span>
@@ -121,7 +137,7 @@ export function RouteComparisonPanel({
                   />
                   <span>
                     {hazardData.nearbyReports.length === 0
-                      ? 'No sample hazards within 150m'
+                      ? 'No sample hazards within 150m corridor (demo dataset)'
                       : `${hazardData.nearbyReports.length} nearby sample ${
                           hazardData.nearbyReports.length === 1 ? 'hazard' : 'hazards'
                         }`}
@@ -218,7 +234,7 @@ export function RouteComparisonPanel({
       <div className="p-2.5 bg-[#FAF8F3] border border-[#DCD9CD] rounded-xs flex items-start gap-2 text-[10px] text-[#717886]">
         <Info className="w-3.5 h-3.5 text-[#1E6091] shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <strong>Demo Exposure Index:</strong> Calculated by weighting verified sample reports within 150m of route geometry (Critical: 10, High: 6, Moderate: 3, Low: 1). This is a demonstration heuristic, not a certified safety rating.
+          <strong>Demo Exposure Index:</strong> Calculated by weighting non-rejected sample reports within 150m of route geometry (Critical: 10, High: 6, Moderate: 3, Low: 1). A zero score indicates no demonstration records exist within the search corridor, not a guarantee that the road is defect-free. This is a demonstration heuristic, not a certified safety rating.
         </p>
       </div>
     </div>

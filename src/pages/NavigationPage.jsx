@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { 
   Navigation as NavigationIcon, 
   ArrowUpDown, 
@@ -70,6 +70,29 @@ export function NavigationPage() {
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [routeError, setRouteError] = useState(null);
 
+  const directionsAbortControllerRef = useRef(null);
+
+  // Clean up in-flight request on unmount
+  useEffect(() => {
+    return () => {
+      if (directionsAbortControllerRef.current) {
+        directionsAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Compute fastest route index by comparing durations
+  const fastestRouteIndex = useMemo(() => {
+    if (routes.length === 0) return 0;
+    let best = 0;
+    for (let i = 1; i < routes.length; i++) {
+      if (routes[i].duration < routes[best].duration) {
+        best = i;
+      }
+    }
+    return best;
+  }, [routes]);
+
   // Validate if both origin and destination have valid coordinates
   const isReadyToRoute = Boolean(origin?.coordinates && destination?.coordinates);
 
@@ -86,9 +109,18 @@ export function NavigationPage() {
         return;
       }
 
+      // Abort previous in-flight directions request to prevent race conditions
+      if (directionsAbortControllerRef.current) {
+        directionsAbortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      directionsAbortControllerRef.current = controller;
+
       setIsLoadingRoutes(true);
       setRouteError(null);
       setSelectedHazard(null);
+      setRoutes([]);
+      setRecommendationReason('');
 
       try {
         const [origLng, origLat] = fromLoc.coordinates;
@@ -96,19 +128,20 @@ export function NavigationPage() {
 
         const endpoint = `https://api.mapbox.com/directions/v5/mapbox/driving/${origLng},${origLat};${destLng},${destLat}?alternatives=true&geometries=geojson&overview=full&steps=true&access_token=${mapboxToken}`;
 
-        const res = await fetch(endpoint);
+        const res = await fetch(endpoint, { signal: controller.signal });
         if (!res.ok) {
           throw new Error(`Mapbox Directions API error: HTTP ${res.status}`);
         }
 
         const data = await res.json();
-        const apiRoutes = data.routes || [];
+        if (controller.signal.aborted) return;
 
+        const apiRoutes = data.routes || [];
         if (apiRoutes.length === 0) {
           throw new Error('No drivable routes found between these locations.');
         }
 
-        // For each route, compute proximity and hazard exposure against ROAD_CONDITIONS_REPORTS
+        // For each route, compute proximity and hazard exposure against non-rejected ROAD_CONDITIONS_REPORTS
         const analyzedRoutes = apiRoutes.map((route) => {
           const hazardAnalysis = calculateRouteHazards(
             route.geometry?.coordinates || [],
@@ -124,26 +157,20 @@ export function NavigationPage() {
 
         // Determine recommended route: lowest exposureIndex, tie-breaker: shorter duration
         let bestIndex = 0;
-        let isTie = true;
-
         for (let i = 1; i < analyzedRoutes.length; i++) {
           const curr = analyzedRoutes[i];
           const best = analyzedRoutes[bestIndex];
 
           if (curr.hazardAnalysis.exposureIndex < best.hazardAnalysis.exposureIndex) {
             bestIndex = i;
-            isTie = false;
-          } else if (curr.hazardAnalysis.exposureIndex > best.hazardAnalysis.exposureIndex) {
-            isTie = false;
-          } else {
-            // Equal exposure index: check duration
+          } else if (curr.hazardAnalysis.exposureIndex === best.hazardAnalysis.exposureIndex) {
             if (curr.duration < best.duration) {
               bestIndex = i;
             }
           }
         }
 
-        // Construct concise rationale
+        // Construct factually accurate recommendation explanation
         const bestRoute = analyzedRoutes[bestIndex];
         const reportCount = bestRoute.hazardAnalysis.nearbyReports.length;
         let reason = '';
@@ -152,14 +179,24 @@ export function NavigationPage() {
           reason = `Single route available — ${reportCount} nearby sample ${
             reportCount === 1 ? 'hazard' : 'hazards'
           } (Exposure Index: ${bestRoute.hazardAnalysis.exposureIndex} pts).`;
-        } else if (isTie) {
-          reason = `Identical demo hazard exposure across routes (${bestRoute.hazardAnalysis.exposureIndex} pts) — Route ${bestIndex + 1} chosen as the fastest alternative.`;
         } else {
-          const otherRoute = analyzedRoutes.find((_, idx) => idx !== bestIndex);
-          const otherExp = otherRoute?.hazardAnalysis?.exposureIndex;
-          reason = `Lower demo-hazard exposure — Route ${bestIndex + 1} has ${bestRoute.hazardAnalysis.exposureIndex} exposure pts (${reportCount} nearby reports) compared to ${otherExp} pts on Route ${
-            analyzedRoutes.indexOf(otherRoute) + 1
-          }.`;
+          const otherExposures = analyzedRoutes
+            .filter((_, idx) => idx !== bestIndex)
+            .map((r) => r.hazardAnalysis.exposureIndex);
+          const minOtherExp = Math.min(...otherExposures);
+          const maxOtherExp = Math.max(...otherExposures);
+
+          if (bestRoute.hazardAnalysis.exposureIndex < minOtherExp) {
+            const comparisonText =
+              minOtherExp === maxOtherExp
+                ? `${minOtherExp} pts`
+                : `${minOtherExp}–${maxOtherExp} pts`;
+            reason = `Lowest demo-hazard exposure — Route ${bestIndex + 1} has ${bestRoute.hazardAnalysis.exposureIndex} exposure pts (${reportCount} nearby sample hazards) compared to ${comparisonText} on alternative routes.`;
+          } else if (bestRoute.hazardAnalysis.exposureIndex === minOtherExp) {
+            reason = `Identical lowest demo-hazard exposure (${bestRoute.hazardAnalysis.exposureIndex} pts) — Route ${bestIndex + 1} chosen as the fastest alternative.`;
+          } else {
+            reason = `Route ${bestIndex + 1} recommended with ${bestRoute.hazardAnalysis.exposureIndex} exposure pts.`;
+          }
         }
 
         setRoutes(analyzedRoutes);
@@ -167,11 +204,17 @@ export function NavigationPage() {
         setSelectedRouteIndex(bestIndex);
         setRecommendationReason(reason);
       } catch (err) {
+        if (err.name === 'AbortError') {
+          // Newer request superseded this calculation; clean suppression
+          return;
+        }
         console.warn('Route calculation error:', err);
         setRouteError(err.message || 'Unable to calculate routes between selected locations.');
         setRoutes([]);
       } finally {
-        setIsLoadingRoutes(false);
+        if (directionsAbortControllerRef.current === controller) {
+          setIsLoadingRoutes(false);
+        }
       }
     },
     [origin, destination, mapboxToken]
@@ -179,18 +222,31 @@ export function NavigationPage() {
 
   // Handle shortcut selection
   const handleSelectShortcut = (shortcut) => {
+    if (directionsAbortControllerRef.current) {
+      directionsAbortControllerRef.current.abort();
+    }
     setOrigin(shortcut.origin);
     setDestination(shortcut.destination);
+    setRoutes([]);
+    setSelectedHazard(null);
+    setRecommendationReason('');
     setRouteError(null);
     calculateRoutes(shortcut.origin, shortcut.destination);
   };
 
   // Swap origin and destination
   const handleSwapLocations = () => {
+    if (directionsAbortControllerRef.current) {
+      directionsAbortControllerRef.current.abort();
+    }
     const prevOrigin = origin;
     const prevDest = destination;
     setOrigin(prevDest);
     setDestination(prevOrigin);
+    setRoutes([]);
+    setSelectedHazard(null);
+    setRecommendationReason('');
+    setRouteError(null);
     if (prevDest?.coordinates && prevOrigin?.coordinates) {
       calculateRoutes(prevDest, prevOrigin);
     }
@@ -201,13 +257,8 @@ export function NavigationPage() {
       {/* 1. Editorial Page Header */}
       <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-1">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[11px] font-mono text-[#717886] uppercase tracking-wider">
-              05 / NAVIGATION
-            </span>
-            <span className="border border-[#DCD9CD] bg-[#F6F5EE] px-1.5 py-0.5 rounded-xs text-[10px] font-mono text-[#717886]">
-              DEMO DATA
-            </span>
+          <div className="text-[11px] font-mono text-[#717886] uppercase tracking-wider">
+            05 / NAVIGATION
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-bold text-[#141E28] tracking-tight leading-none">
@@ -240,12 +291,24 @@ export function NavigationPage() {
               placeholder="Search origin address or place in Delhi NCR..."
               value={origin}
               onSelectLocation={(loc) => {
+                if (directionsAbortControllerRef.current) {
+                  directionsAbortControllerRef.current.abort();
+                }
                 setOrigin(loc);
+                setRoutes([]);
+                setSelectedHazard(null);
+                setRecommendationReason('');
                 setRouteError(null);
               }}
               onClear={() => {
+                if (directionsAbortControllerRef.current) {
+                  directionsAbortControllerRef.current.abort();
+                }
                 setOrigin(null);
                 setRoutes([]);
+                setSelectedHazard(null);
+                setRecommendationReason('');
+                setRouteError(null);
               }}
               mapboxToken={mapboxToken}
               badgeText="A"
@@ -273,12 +336,24 @@ export function NavigationPage() {
               placeholder="Search destination address or place..."
               value={destination}
               onSelectLocation={(loc) => {
+                if (directionsAbortControllerRef.current) {
+                  directionsAbortControllerRef.current.abort();
+                }
                 setDestination(loc);
+                setRoutes([]);
+                setSelectedHazard(null);
+                setRecommendationReason('');
                 setRouteError(null);
               }}
               onClear={() => {
+                if (directionsAbortControllerRef.current) {
+                  directionsAbortControllerRef.current.abort();
+                }
                 setDestination(null);
                 setRoutes([]);
+                setSelectedHazard(null);
+                setRecommendationReason('');
+                setRouteError(null);
               }}
               mapboxToken={mapboxToken}
               badgeText="B"
@@ -363,6 +438,7 @@ export function NavigationPage() {
               routes={routes}
               selectedRouteIndex={selectedRouteIndex}
               recommendedRouteIndex={recommendedRouteIndex}
+              fastestRouteIndex={fastestRouteIndex}
               recommendationReason={recommendationReason}
               onSelectRoute={(idx) => {
                 setSelectedRouteIndex(idx);
@@ -402,7 +478,7 @@ export function NavigationPage() {
                   <span className="w-4 h-4 rounded-full bg-[#141E28] text-white flex items-center justify-center text-[9px] shrink-0">
                     3
                   </span>
-                  <span>Compare demo exposure indices and nearby verified damage reports.</span>
+                  <span>Compare demo exposure indices and nearby non-rejected sample reports.</span>
                 </div>
               </div>
             </div>
