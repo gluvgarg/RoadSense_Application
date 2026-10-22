@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Search, 
   RotateCcw, 
@@ -19,6 +19,16 @@ export function DetectionManagementPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedReport, setSelectedReport] = useState(null);
   const [notification, setNotification] = useState(null);
+  const notificationTimerRef = useRef(null);
+
+  // Clean up outstanding notification timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, []);
 
   // Check if any filter is actively applied
   const isFilterActive = searchQuery.trim() !== '' || severityFilter !== 'ALL' || statusFilter !== 'ALL';
@@ -107,13 +117,19 @@ export function DetectionManagementPage() {
         : curr
     );
 
+    // Clear any existing notification timer to prevent it from dismissing newer notifications
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
+
     setNotification({
       message: `Report ${reportId} status updated to "${newStatus}" in local demonstration state.`
     });
 
-    // Auto-dismiss notification after 6 seconds
-    setTimeout(() => {
-      setNotification((curr) => (curr?.message.includes(reportId) ? null : curr));
+    // Auto-dismiss notification after 6 seconds while tracking active timer
+    notificationTimerRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimerRef.current = null;
     }, 6000);
   };
 
@@ -167,7 +183,11 @@ export function DetectionManagementPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+
+    // Defer revoking the object URL slightly to prevent premature cancellation in some browsers
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
   };
 
   return (
@@ -283,7 +303,13 @@ export function DetectionManagementPage() {
           </div>
           <button
             type="button"
-            onClick={() => setNotification(null)}
+            onClick={() => {
+              if (notificationTimerRef.current) {
+                clearTimeout(notificationTimerRef.current);
+                notificationTimerRef.current = null;
+              }
+              setNotification(null);
+            }}
             className="p-1 rounded text-[#717886] hover:text-[#141E28] transition-colors cursor-pointer"
             aria-label="Dismiss notification"
           >
@@ -481,7 +507,7 @@ export function DetectionManagementPage() {
 
                     {/* 5. AI Confidence */}
                     <td className="py-3 px-4 font-mono text-xs text-[#1E6091] whitespace-nowrap">
-                      {report.confidence || '95.0%'}
+                      {report.confidence || 'N/A'}
                     </td>
 
                     {/* 6. Review Status with status dot */}

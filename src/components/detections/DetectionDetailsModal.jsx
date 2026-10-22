@@ -116,7 +116,7 @@ export function DetectionDetailsModal({
                 AI Model Confidence
               </span>
               <span className="font-mono font-medium text-[#1E6091] mt-0.5 block">
-                {report.confidence || '95.0%'}
+                {report.confidence || 'N/A'}
               </span>
             </div>
 
@@ -140,11 +140,11 @@ export function DetectionDetailsModal({
 
             <div>
               <span className="text-[10px] uppercase font-mono text-[#717886] block">
-                Hardware Source
+                Data Source
               </span>
               <div className="font-mono text-[#575F6E] mt-0.5 flex items-center gap-1">
-                <Cpu className="w-3 h-3 text-[#1E6091] shrink-0" />
-                <span>Edge AI Camera Unit</span>
+                <Cpu className="w-3 h-3 text-[#717886] shrink-0" />
+                <span>Illustrative demo detection</span>
               </div>
             </div>
           </div>
